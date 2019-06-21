@@ -36,15 +36,16 @@ function onSubmit(e) {
 
 function onTrackerSubmit(timeStamp, responseId, submitter, idGoogleSheetUserFileConverted, urlUserFile) {
 
-  const urlSchoolDashboard = "https://docs.google.com/spreadsheets/d/1-natPhgAxf9Q8fwbg8wbSV_OQT6pSvr7RyhvgApFUEU/edit#gid=403349783";
-  const urlTemplateDashboard = "https://docs.google.com/spreadsheets/d/19RQUtQ6G3LrFaHUcF77a4_7AI0xoLlk4uiTqnMATd3w/edit#gid=0";
-  const urlTemplateGoogleSheetScoreBased = "https://docs.google.com/spreadsheets/d/1LEDErVIqqHJxXT_qFziJDTFYoYUYTD0XjUJ_eQTIfzQ/edit#gid=0";
+  const schoolDashboardUrl = "https://docs.google.com/spreadsheets/d/1-natPhgAxf9Q8fwbg8wbSV_OQT6pSvr7RyhvgApFUEU/edit#gid=403349783";
+  const multiAssmtTemplateUrl = "https://docs.google.com/spreadsheets/d/145bSUG6mY77uHDptcWT--MTKMUaenTOVTuT1yG2uvFg/edit#gid=0";
+  const scoreBasedTemplateUrl = "https://docs.google.com/spreadsheets/d/1vzK4txu18Jzk4URNNTFoxNluH1wP7GCJlSxTS75JhVo/edit#gid=0";
+  const rubricBasedTemplateUrl = "https://docs.google.com/spreadsheets/d/18dDFwmW7w77F9QR6BqWK7jHfivjKFaux4fM6RTXrRVg/edit#gid=928229770";
   const rowOffsetMarksObtained = 42;
   const colOffsetMarksObtained = 41;
   const rowTrackerMaxMarks = 35;
   const rowOffsetSkills = 4;
 
-  var urlDashboard = "https://docs.google.com/spreadsheets/d/1zZ0QcsZo8KijckgeCwGZc2Kwu2qdojTJxB5ZdGWRmtg/edit#gid=835067691";
+  //var urlDashboard = "https://docs.google.com/spreadsheets/d/1zZ0QcsZo8KijckgeCwGZc2Kwu2qdojTJxB5ZdGWRmtg/edit#gid=835067691";
 
 
   //  timeStamp = new Date();
@@ -151,7 +152,7 @@ function onTrackerSubmit(timeStamp, responseId, submitter, idGoogleSheetUserFile
     }
   }
 
-  var schoolDashboard = SpreadsheetApp.openByUrl(urlSchoolDashboard);
+  var schoolDashboard = SpreadsheetApp.openByUrl(schoolDashboardUrl);
   var lockingPeriodInDays = schoolDashboard.getRangeByName("lockingPeriodInDays").getValue();
 
   isDateValid = isValidDate(date, lockingPeriodInDays, emailBody);
@@ -322,7 +323,7 @@ function onTrackerSubmit(timeStamp, responseId, submitter, idGoogleSheetUserFile
 
     if (dashboardExists == false) {
 
-      googleSheetDashboard = SpreadsheetApp.openByUrl(urlTemplateDashboard).copy((acadYear + "_" + school + "_" + standard + "_" + division + "_" + subject).toLowerCase());
+      googleSheetDashboard = SpreadsheetApp.openByUrl(multiAssmtTemplateUrl).copy((acadYear + "_" + school + "_" + standard + "_" + division + "_" + subject).toLowerCase());
       googleSheetDashboard.getRangeByName("assessmentDetailsStartCell").offset(0, 0, 4, 1).setValues([[school], [standard], [division], [subject]]);
       DriveApp.getFileById(googleSheetDashboard.getId()).setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.EDIT);
       urlDashboard = googleSheetDashboard.getUrl();
@@ -380,7 +381,7 @@ function onTrackerSubmit(timeStamp, responseId, submitter, idGoogleSheetUserFile
 
           if (row[10] != isRubricBasedAssessment) {
 
-            emailBody.push("You have previously submitted a " + row[10] + " based tracker for this assessment. Cannot change it to a " + isRubricBasedAssessment + " based tracker.");
+            emailBody.push("You have previously submitted a " + row[10] + " based tracker for this assessment. Cannot change it to a " + isRubricBasedAssessment + " based tracker. You will have to first remove the assessment and then submit the " + isRubricBasedAssessment + " tracker.");
             return emailBody.join("\n");
           }
 
@@ -405,8 +406,18 @@ function onTrackerSubmit(timeStamp, responseId, submitter, idGoogleSheetUserFile
 
     } else {
 
-      var templateGoogleSheetScoreBased = SpreadsheetApp.openByUrl(urlTemplateGoogleSheetScoreBased);
-      googleSheetTracker = templateGoogleSheetScoreBased.copy((acadYear + "_" + school + "_" + standard + "_" + division + "_" + subject + "_" + Utilities.formatDate(date, "IST", "MMM_d")).toLowerCase());
+      var googleSheetTrackerTemplate;
+
+      if (isRubricBasedAssessment.toLowerCase == "score") {
+
+        googleSheetTrackerTemplate = SpreadsheetApp.openByUrl(scoreBasedTemplateUrl);
+
+      } else {
+
+        googleSheetTrackerTemplate = SpreadsheetApp.openByUrl(rubricBasedTemplateUrl);
+      }
+
+      googleSheetTracker = googleSheetTrackerTemplate.copy((acadYear + "_" + school + "_" + standard + "_" + division + "_" + subject + "_" + Utilities.formatDate(date, "IST", "MMM_d")).toLowerCase());
       DriveApp.getFileById(googleSheetTracker.getId()).setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.EDIT);
       urlGoogleSheetTracker = googleSheetTracker.getUrl();
     }
@@ -421,6 +432,12 @@ function onTrackerSubmit(timeStamp, responseId, submitter, idGoogleSheetUserFile
     googleSheetTracker.getRangeByName("tableUserEnteredValues").offset(0, 0, userEnteredValues.length, userEnteredValues[0].length).setValues(userEnteredValues);
 
     googleSheetTracker.getRangeByName("auditLogDb").getSheet().appendRow([timeStamp, responseId, submitter, urlUserFile]);
+
+    if (isRubricBasedAssessment.toLowerCase() == "rubric") {
+
+      googleSheetTracker.getRangeByName("listRubric").clearContent();
+      googleSheetTracker.getRangeByName("listRubric").offset(0, 0, listRubric.length, 1).setValues(listRubric);
+    }
 
     if (trackerExists == false) {
 
