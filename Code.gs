@@ -2,12 +2,14 @@ function onSubmit(e) {
 
   var emailBody = "";
 
+  var response = e.response;
+  var responseId = response.getId();
+  var timeStamp = response.getTimestamp();
+  var submitter = response.getRespondentEmail();
+
+
   try {
 
-    var response = e.response;
-    var responseId = response.getId();
-    var timeStamp = response.getTimestamp();
-    var submitter = response.getRespondentEmail();
     var userSubmittedTrackerId = response.getItemResponses()[0].getResponse().toString();
 
     //    var responseId = 12345678;
@@ -21,15 +23,13 @@ function onSubmit(e) {
 
     var googleSheetWithUserSubmittedContentId = CreateGoogleSpreadSheet(userSubmittedTrackerId);
 
-    emailBody += "googleSheetWithUserSubmittedContentId: " + googleSheetWithUserSubmittedContentId + "\n";
-
     emailBody += onTrackerSubmit(timeStamp, responseId, submitter, googleSheetWithUserSubmittedContentId, urlUserFile);
 
-    MailApp.sendEmail("vinay.poulose@akanksha.org", "vinay.poulose@akanksha.org", "D3f: Successful data upload", emailBody);
+    MailApp.sendEmail(submitter, "vinay.poulose@akanksha.org", "D3f: Successful data upload", emailBody);
 
   } catch (exception) {
 
-    MailApp.sendEmail("vinay.poulose@akanksha.org", "vinay.poulose@akanksha.org", "D3f: Failed data upload",
+    MailApp.sendEmail(submitter, "vinay.poulose@akanksha.org", "D3f: Failed data upload",
       "There was an error while trying to add your data to D3f!\n" + exception.toString());
   }
 }
@@ -152,7 +152,7 @@ function onTrackerSubmit(timeStamp, responseId, submitter, idGoogleSheetUserFile
   }
 
   var schoolDashboard = SpreadsheetApp.openByUrl(urlSchoolDashboard);
-  var lockingPeriodInDays  = schoolDashboard.getRangeByName("lockingPeriodInDays").getValue();
+  var lockingPeriodInDays = schoolDashboard.getRangeByName("lockingPeriodInDays").getValue();
 
   isDateValid = isValidDate(date, lockingPeriodInDays, emailBody);
 
@@ -194,7 +194,7 @@ function onTrackerSubmit(timeStamp, responseId, submitter, idGoogleSheetUserFile
     includeInReportCard = true;
   }
 
-  
+
 
   trackerValid = trackerValid && getErrorForMandatoryField(school, isSchoolValid, "school", emailBody);
   trackerValid = trackerValid && getErrorForMandatoryField(subject, isSubjectValid, "subject", emailBody);
@@ -207,7 +207,7 @@ function onTrackerSubmit(timeStamp, responseId, submitter, idGoogleSheetUserFile
     return emailBody.join("\n");
   }
 
-  
+
   var assessmentId = makeKey([school, standard, division, subject, "" + Utilities.formatDate(date, "IST", "YYYYMMdd")]);
   var arrLog = [];
   var arrRowsToInsertInAssessmentDb = [];
@@ -1067,7 +1067,7 @@ function isValidDate(date, lockingPeriodInDays, log) {
   try {
 
     //var temp = Utilities.formatDate(date, "IST", "YYYY/MM/DD");
-    
+
     var assessmentYear = Utilities.formatDate(date, "IST", "YYYY");
     var assessmentMonth = Utilities.formatDate(date, "IST", "M");
     var assessmentDayOfMonth = Utilities.formatDate(date, "IST", "d");
