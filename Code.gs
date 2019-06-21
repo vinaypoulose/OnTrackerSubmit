@@ -151,7 +151,10 @@ function onTrackerSubmit(timeStamp, responseId, submitter, idGoogleSheetUserFile
     }
   }
 
-  isDateValid = isValidDate(date);
+  var schoolDashboard = SpreadsheetApp.openByUrl(urlSchoolDashboard);
+  var lockingPeriodInDays  = schoolDashboard.getRangeByName("lockingPeriodInDays").getValue();
+
+  isDateValid = isValidDate(date, lockingPeriodInDays, emailBody);
 
   if (cceComponent == null || cceComponent.toString() == "") {
 
@@ -191,25 +194,26 @@ function onTrackerSubmit(timeStamp, responseId, submitter, idGoogleSheetUserFile
     includeInReportCard = true;
   }
 
-  var assessmentId = makeKey([school, standard, division, subject, "" + date]);
-  var arrLog = [];
-  var arrRowsToInsertInAssessmentDb = [];
-  var arrAssessmentDetails = [assessmentId, subject, date, cceComponent, tag, isRubricBasedAssessment, isTermEndAssessment, includeInReportCard];
-
+  
 
   trackerValid = trackerValid && getErrorForMandatoryField(school, isSchoolValid, "school", emailBody);
   trackerValid = trackerValid && getErrorForMandatoryField(subject, isSubjectValid, "subject", emailBody);
   trackerValid = trackerValid && getErrorForMandatoryField(standard, isStandardValid, "standard", emailBody);
   trackerValid = trackerValid && getErrorForMandatoryField(division, isDivisionValid, "division", emailBody);
-  trackerValid = trackerValid && getErrorForMandatoryField(date, isDateValid, "date", emailBody);
+  trackerValid = trackerValid && isDateValid;
 
   if (trackerValid == false) {
 
     return emailBody.join("\n");
   }
 
+  
+  var assessmentId = makeKey([school, standard, division, subject, "" + Utilities.formatDate(date, "IST", "YYYYMMdd")]);
+  var arrLog = [];
+  var arrRowsToInsertInAssessmentDb = [];
+  var arrAssessmentDetails = [assessmentId, subject, date, cceComponent, tag, isRubricBasedAssessment, isTermEndAssessment, includeInReportCard];
 
-  var schoolDashboard = SpreadsheetApp.openByUrl(urlSchoolDashboard);
+
   var permissionsDb = schoolDashboard.getRangeByName("permissionData").getValues();
   var rowPermissionForClass;
   var editorForSubjectForClass;
@@ -1058,14 +1062,44 @@ function CreateGoogleSpreadSheet(userSubmittedTrackerId) {
 
 }
 
-function isValidDate(date) {
+function isValidDate(date, lockingPeriodInDays, log) {
 
   try {
 
-    var temp = Utilities.formatDate(date, "IST", "YYYY/MM/DD");
+    //var temp = Utilities.formatDate(date, "IST", "YYYY/MM/DD");
+    
+    var assessmentYear = Utilities.formatDate(date, "IST", "YYYY");
+    var assessmentMonth = Utilities.formatDate(date, "IST", "M");
+    var assessmentDayOfMonth = Utilities.formatDate(date, "IST", "d");
+
+    var todayYear = Utilities.formatDate(new Date(), "IST", "YYYY");
+    var todayMonth = Utilities.formatDate(new Date(), "IST", "M");
+    var todayDayOfMonth = Utilities.formatDate(new Date(), "IST", "d");
+
+    var dateDiff = Math.round((new Date(todayYear, todayMonth - 1, todayDayOfMonth) - new Date(assessmentYear, assessmentMonth - 1, assessmentDayOfMonth)) / (1000 * 60 * 60 * 24));
+
+    if (dateDiff < 0) {
+
+      log.push("The assessment date is in the future!");
+      return false;
+
+    } else if (dateDiff > lockingPeriodInDays) {
+
+      log.push("You are submitting an assessment post the deadline of " + lockingPeriodInDays + " days. The tracker has not been accepted.");
+      return false;
+
+    }
 
   } catch (e) {
 
+    if (date == null || date.toString() == "") {
+
+      log.push("Date is empty");
+
+    } else {
+
+      log.push("Date entered is invalid");
+    }
     return false;
   }
 
